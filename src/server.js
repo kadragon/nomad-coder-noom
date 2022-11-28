@@ -1,3 +1,5 @@
+import http from "http";
+import WebSocket from "ws";
 import express from "express";
 
 const app = express();
@@ -12,4 +14,31 @@ app.get("/*", (req, res) => res.redirect("/"));
 
 const handleListen = () => console.log(`Listening on http://localhost:3000`);
 
-app.listen(3000, handleListen);
+// http 서버
+const server = http.createServer(app).listen(3000, handleListen);
+
+// WebSocket 서버
+const wss = new WebSocket.Server({ server });
+const sockets = [];
+// WebSocket 기능
+wss.on("connection", (socket) => {
+  sockets.push(socket);
+  socket["nickname"] = "Anonymouse";
+
+  console.log("Connected to Browser ✅");
+  socket.on("close", () => console.log("Disconnected from the Browser ❌"));
+
+  socket.on("message", (msg) => {
+    const message = JSON.parse(msg);
+    switch (message.type) {
+      case "new_message":
+        sockets.forEach((aSocket) =>
+          aSocket.send(`${socket.nickname}: ${message.payload}`)
+        );
+        break;
+      case "nickname":
+        socket["nickname"] = message.payload;
+        break;
+    }
+  });
+});
